@@ -66,12 +66,12 @@ ${STOP_AI_SLOP_RULES}
     {
       "heading": "セクション見出し（名詞句）",
       "body": "本文（Markdown形式。stop-ai-slop-jpルールを厳守）",
-      "imagePrompt": "An illustration of... (English, describe what to visualize for this section)"
+      "imagePrompt": "このセクションの内容を表すイラストの説明（日本語で記述）"
     }
   ],
   "conclusion": "まとめ（stop-ai-slop-jpルールを適用）"
 }
-imagePromptは全セクションには付与しないでください。記事全体で2〜3セクションのみ、視覚的に補完が最も有効なセクションだけに英語で記述してください。imagePromptがないセクションはフィールド自体を省略してください。`;
+imagePromptは全セクションには付与しないでください。記事全体で2〜3セクションのみ、視覚的に補完が最も有効なセクションだけに日本語で記述してください。imagePromptがないセクションはフィールド自体を省略してください。`;
 
   const message = await client.messages.create({
     model,
