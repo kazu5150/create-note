@@ -2,12 +2,15 @@ import OpenAI from "openai";
 
 const client = new OpenAI();
 
-export async function generateImage(prompt: string): Promise<string> {
+export async function generateImage(
+  prompt: string,
+  size: "1024x1024" | "1792x1024" | "1024x1792" = "1024x1024"
+): Promise<string> {
   const response = await client.images.generate({
     model: "gpt-image-2",
     prompt,
     n: 1,
-    size: "1024x1024",
+    size,
   });
 
   const item = response.data?.[0];

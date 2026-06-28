@@ -65,6 +65,56 @@ async function uploadBase64Image(
   return finalUrl;
 }
 
+// note.com が要求するアイキャッチサイズ（縦横比 1280:670）
+const EYECATCH_WIDTH = 1280;
+const EYECATCH_HEIGHT = 670;
+
+async function uploadEyecatch(
+  base64: string,
+  noteId: number,
+  cookie: string
+): Promise<void> {
+  const sharp = (await import("sharp")).default;
+  const srcBuffer = Buffer.from(base64, "base64");
+
+  // note.com が要求する 1280x670 にリサイズ（中央クロップ）
+  const resizedBuffer = await sharp(srcBuffer)
+    .resize(EYECATCH_WIDTH, EYECATCH_HEIGHT, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
+
+  console.log(`[note-client] アイキャッチリサイズ完了: ${EYECATCH_WIDTH}x${EYECATCH_HEIGHT}`);
+
+  const form = new FormData();
+  form.append("note_id", String(noteId));
+  form.append(
+    "file",
+    new Blob([new Uint8Array(resizedBuffer)], { type: "image/png" }),
+    "eyecatch.png"
+  );
+  form.append("width", String(EYECATCH_WIDTH));
+  form.append("height", String(EYECATCH_HEIGHT));
+
+  const res = await fetch("https://note.com/api/v1/image_upload/note_eyecatch", {
+    method: "POST",
+    headers: {
+      Cookie: `_note_session_v5=${cookie}`,
+      "X-Requested-With": "XMLHttpRequest",
+      Origin: "https://editor.note.com",
+      Referer: "https://editor.note.com/",
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`アイキャッチアップロードエラー (${res.status}): ${txt}`);
+  }
+
+  const json = await res.json();
+  console.log(`[note-client] アイキャッチレスポンス:`, JSON.stringify(json));
+}
+
 async function buildNoteBody(article: Article, cookie: string): Promise<string> {
   const parts: string[] = [];
 
@@ -134,10 +184,19 @@ export async function uploadToNote(article: Article): Promise<NoteUploadResult> 
   const noteKey = createJson?.data?.key ?? "";
   if (!noteId) throw new Error("note から ID が取得できませんでした");
 
-  // Step 2: SVGをアップロードしながら本文を構築
+  // Step 2: アイキャッチ画像をアップロード
+  if (article.eyecatchData) {
+    try {
+      await uploadEyecatch(article.eyecatchData, noteId, cookie);
+    } catch (e) {
+      console.warn("[note-client] アイキャッチアップロードをスキップ:", (e as Error).message);
+    }
+  }
+
+  // Step 3: 本文を構築（セクション画像のアップロードを含む）
   const body = await buildNoteBody(article, cookie);
 
-  // Step 3: 下書き保存
+  // Step 4: 下書き保存
   const saveRes = await fetch(
     `https://note.com/api/v1/text_notes/draft_save?id=${noteId}&is_temp_saved=true`,
     {

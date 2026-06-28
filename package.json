@@ -16,7 +16,8 @@
     "openai": "^6.45.0",
     "prisma": "^6.19.3",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "sharp": "^0.35.2"
   },
   "devDependencies": {
     "@types/node": "^20",

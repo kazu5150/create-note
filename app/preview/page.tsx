@@ -47,9 +47,10 @@ export default function PreviewPage() {
     setSaving(true);
     setStatusMsg("");
     try {
-      // imageData は容量が大きいため DB には保存しない（imagePrompt だけ残す）
+      // imageData / eyecatchData は容量が大きいため DB には保存しない
       const articleForDb = {
         ...article,
+        eyecatchData: undefined,
         sections: article.sections.map((s) => ({
           heading: s.heading,
           body: s.body,
@@ -116,6 +117,13 @@ export default function PreviewPage() {
       <ScoreBadge score={score} details={scoreDetails} />
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+        {article.eyecatchData && (
+          <img
+            src={`data:image/png;base64,${article.eyecatchData}`}
+            alt="アイキャッチ画像"
+            className="w-full rounded-lg object-cover"
+          />
+        )}
         <h2 className="text-xl font-bold text-gray-900">{article.title}</h2>
         <p className="text-gray-700 border-l-4 border-blue-400 pl-4 italic">{article.hook}</p>
 

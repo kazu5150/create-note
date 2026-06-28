@@ -16,6 +16,8 @@ export type Article = {
   hook: string;
   sections: Section[];
   conclusion: string;
+  eyecatchPrompt?: string;
+  eyecatchData?: string;
 };
 
 export type ArticleWithScore = {
@@ -62,6 +64,7 @@ ${STOP_AI_SLOP_RULES}
 {
   "title": "記事タイトル",
   "hook": "冒頭の読者を惹きつける一文（stop-ai-slop-jpルールを適用）",
+  "eyecatchPrompt": "記事全体のテーマを表す横長アイキャッチ画像の説明（日本語で記述）",
   "sections": [
     {
       "heading": "セクション見出し（名詞句）",
@@ -71,6 +74,7 @@ ${STOP_AI_SLOP_RULES}
   ],
   "conclusion": "まとめ（stop-ai-slop-jpルールを適用）"
 }
+eyecatchPromptは必ず含めてください。記事のテーマに合った横長（16:9比率）のビジュアルイメージを日本語で説明してください。
 imagePromptは全セクションには付与しないでください。記事全体で2〜3セクションのみ、視覚的に補完が最も有効なセクションだけに日本語で記述してください。imagePromptがないセクションはフィールド自体を省略してください。`;
 
   const message = await client.messages.create({
@@ -91,22 +95,32 @@ imagePromptは全セクションには付与しないでください。記事全
 
   const raw = JSON.parse(jsonMatch[0]) as Article;
 
-  const sections: Section[] = await Promise.all(
-    raw.sections.map(async (s) => {
-      if (s.imagePrompt) {
-        try {
-          const imageData = await generateImage(s.imagePrompt);
-          return { ...s, imageData };
-        } catch (e) {
-          console.warn("[generate-article] 画像生成をスキップ:", (e as Error).message);
-          return s;
+  const [sections, eyecatchData] = await Promise.all([
+    Promise.all(
+      raw.sections.map(async (s) => {
+        if (s.imagePrompt) {
+          try {
+            const imageData = await generateImage(s.imagePrompt);
+            return { ...s, imageData };
+          } catch (e) {
+            console.warn("[generate-article] セクション画像生成をスキップ:", (e as Error).message);
+            return s;
+          }
         }
-      }
-      return s;
-    })
-  );
+        return s;
+      })
+    ),
+    raw.eyecatchPrompt
+      ? generateImage(raw.eyecatchPrompt, "1792x1024")
+          .catch(() => generateImage(raw.eyecatchPrompt!, "1024x1024"))
+          .catch((e) => {
+            console.warn("[generate-article] アイキャッチ生成をスキップ:", (e as Error).message);
+            return undefined;
+          })
+      : Promise.resolve(undefined),
+  ]);
 
-  return { ...raw, sections };
+  return { ...raw, sections, ...(eyecatchData ? { eyecatchData } : {}) };
 }
 
 async function scoreArticle(
