@@ -6,13 +6,13 @@ export type NoteUploadResult = {
   noteKey: string;
 };
 
-async function uploadSvgImage(
-  svgString: string,
+async function uploadBase64Image(
+  base64: string,
   cookie: string
 ): Promise<string> {
   // Step A: presigned POST URLを取得
   const preForm = new FormData();
-  preForm.append("filename", "diagram.png");
+  preForm.append("filename", "image.png");
 
   const presignedRes = await fetch(
     "https://note.com/api/v3/images/upload/presigned_post",
@@ -42,10 +42,8 @@ async function uploadSvgImage(
   };
   const { url: finalUrl, action: s3Url, post } = presignedJson.data;
 
-  // Step B: SVG → PNG 変換
-  const { Resvg } = await import("@resvg/resvg-js");
-  const resvg = new Resvg(svgString, { fitTo: { mode: "width", value: 600 } });
-  const pngBuffer = resvg.render().asPng();
+  // Step B: base64 → Buffer
+  const pngBuffer = Buffer.from(base64, "base64");
 
   // Step C: S3 にアップロード（post の各フィールドを FormData に追加、file は最後）
   const s3Form = new FormData();
@@ -55,7 +53,7 @@ async function uploadSvgImage(
   s3Form.append(
     "file",
     new Blob([new Uint8Array(pngBuffer)], { type: "image/png" }),
-    "diagram.png"
+    "image.png"
   );
 
   const s3Res = await fetch(s3Url, { method: "POST", body: s3Form });
@@ -82,9 +80,9 @@ async function buildNoteBody(article: Article, cookie: string): Promise<string> 
       parts.push(`<p name="${pId}" id="${pId}">${line}</p>`);
     }
 
-    if (section.svg) {
+    if (section.imageData) {
       try {
-        const imageUrl = await uploadSvgImage(section.svg, cookie);
+        const imageUrl = await uploadBase64Image(section.imageData, cookie);
         const figId = randomUUID();
         const capId = randomUUID();
         parts.push(
@@ -94,8 +92,7 @@ async function buildNoteBody(article: Article, cookie: string): Promise<string> 
             `</figure>`
         );
       } catch (e) {
-        // SVG画像のアップロード失敗時はスキップして本文テキストのみ投稿
-        console.warn("[note-client] SVGアップロードをスキップ:", (e as Error).message);
+        console.warn("[note-client] 画像アップロードをスキップ:", (e as Error).message);
       }
     }
   }

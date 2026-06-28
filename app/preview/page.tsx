@@ -47,13 +47,22 @@ export default function PreviewPage() {
     setSaving(true);
     setStatusMsg("");
     try {
+      // imageData は容量が大きいため DB には保存しない（imagePrompt だけ残す）
+      const articleForDb = {
+        ...article,
+        sections: article.sections.map((s) => ({
+          heading: s.heading,
+          body: s.body,
+          ...(s.imagePrompt ? { imagePrompt: s.imagePrompt } : {}),
+        })),
+      };
       const res = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inputText,
           title: article.title,
-          bodyJson: JSON.stringify(article),
+          bodyJson: JSON.stringify(articleForDb),
           score,
         }),
       });
@@ -114,10 +123,11 @@ export default function PreviewPage() {
           <div key={i} className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-800">{section.heading}</h3>
             <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">{section.body}</div>
-            {section.svg && (
-              <div
-                className="overflow-x-auto"
-                dangerouslySetInnerHTML={{ __html: section.svg }}
+            {section.imageData && (
+              <img
+                src={`data:image/png;base64,${section.imageData}`}
+                alt={section.imagePrompt ?? "生成された画像"}
+                className="w-full rounded-lg"
               />
             )}
           </div>
