@@ -64,18 +64,18 @@ ${STOP_AI_SLOP_RULES}
 {
   "title": "記事タイトル",
   "hook": "冒頭の読者を惹きつける一文（stop-ai-slop-jpルールを適用）",
-  "eyecatchPrompt": "記事全体のテーマを表す横長アイキャッチ画像の説明（日本語で記述）",
+  "eyecatchPrompt": "記事テーマを連想させる抽象的・幾何学的なビジュアルの説明（例：「AIと学習をテーマにした光の粒子とネットワーク図形が交差するビジュアル」）",
   "sections": [
     {
       "heading": "セクション見出し（名詞句）",
       "body": "本文（Markdown形式。stop-ai-slop-jpルールを厳守）",
-      "imagePrompt": "このセクションの内容を表すイラストの説明（日本語で記述）"
+      "imagePrompt": "このセクションの内容をインフォグラフィックで表現する場合の構成要素の説明（例：「学習ステップを示すフローチャート。3段階の矢印とアイコン」）"
     }
   ],
   "conclusion": "まとめ（stop-ai-slop-jpルールを適用）"
 }
-eyecatchPromptは必ず含めてください。記事のテーマに合った横長（16:9比率）のビジュアルイメージを日本語で説明してください。
-imagePromptは全セクションには付与しないでください。記事全体で2〜3セクションのみ、視覚的に補完が最も有効なセクションだけに日本語で記述してください。imagePromptがないセクションはフィールド自体を省略してください。`;
+eyecatchPromptは必ず含めてください。人物・顔・キャラクターは一切含めず、記事テーマを幾何学・抽象・光・粒子・ネットワークなどで表現した横長ビジュアルを日本語で説明してください。
+imagePromptは全セクションには付与しないでください。記事全体で2〜3セクションのみ、視覚的に補完が最も有効なセクションだけに日本語で記述してください。インフォグラフィック（図・チャート・アイコン構成）として説明し、imagePromptがないセクションはフィールド自体を省略してください。`;
 
   const message = await client.messages.create({
     model,
@@ -100,7 +100,10 @@ imagePromptは全セクションには付与しないでください。記事全
       raw.sections.map(async (s) => {
         if (s.imagePrompt) {
           try {
-            const imageData = await generateImage(s.imagePrompt);
+            const styledPrompt =
+              s.imagePrompt +
+              "。フラットデザインのインフォグラフィック。アイコン・矢印・図形・テキストラベルで構成。人物なし。白背景。クリーンでシンプルなデザイン。";
+            const imageData = await generateImage(styledPrompt);
             return { ...s, imageData };
           } catch (e) {
             console.warn("[generate-article] セクション画像生成をスキップ:", (e as Error).message);
@@ -111,12 +114,17 @@ imagePromptは全セクションには付与しないでください。記事全
       })
     ),
     raw.eyecatchPrompt
-      ? generateImage(raw.eyecatchPrompt, "1792x1024")
-          .catch(() => generateImage(raw.eyecatchPrompt!, "1024x1024"))
-          .catch((e) => {
-            console.warn("[generate-article] アイキャッチ生成をスキップ:", (e as Error).message);
-            return undefined;
-          })
+      ? (() => {
+          const eyecatchStyled =
+            raw.eyecatchPrompt +
+            "。人物・顔・キャラクターなし。抽象的・幾何学的。近未来のAIをイメージした光の粒子、ニューラルネットワーク、回路パターン、浮遊する図形。ダークブルーとシアン・パープルの配色。シネマティックな奥行き感。";
+          return generateImage(eyecatchStyled, "1792x1024")
+            .catch(() => generateImage(eyecatchStyled, "1024x1024"))
+            .catch((e) => {
+              console.warn("[generate-article] アイキャッチ生成をスキップ:", (e as Error).message);
+              return undefined;
+            });
+        })()
       : Promise.resolve(undefined),
   ]);
 

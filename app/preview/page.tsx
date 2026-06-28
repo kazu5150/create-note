@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { ArticleWithScore } from "@/lib/generate-article";
-
-type StoredData = ArticleWithScore & { inputText: string };
+import { getStoredArticle, type StoredArticle } from "@/lib/article-store";
 
 function ScoreBadge({ score, details }: { score: number; details: Record<string, number> }) {
   const color = score >= 40 ? "text-green-700 bg-green-50 border-green-200" : score >= 35 ? "text-yellow-700 bg-yellow-50 border-yellow-200" : "text-red-700 bg-red-50 border-red-200";
@@ -22,7 +20,7 @@ function ScoreBadge({ score, details }: { score: number; details: Record<string,
 
 export default function PreviewPage() {
   const router = useRouter();
-  const [data, setData] = useState<StoredData | null>(null);
+  const [data, setData] = useState<StoredArticle | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -30,12 +28,12 @@ export default function PreviewPage() {
   const [statusMsg, setStatusMsg] = useState("");
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("generatedArticle");
-    if (!raw) {
+    const stored = getStoredArticle();
+    if (!stored) {
       router.push("/");
       return;
     }
-    setData(JSON.parse(raw) as StoredData);
+    setData(stored);
   }, [router]);
 
   if (!data) return null;

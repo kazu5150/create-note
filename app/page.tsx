@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleWithScore } from "@/lib/generate-article";
+import { storeArticle } from "@/lib/article-store";
 
 export default function HomePage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function HomePage() {
       const data = await res.json() as ArticleWithScore & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "生成に失敗しました");
 
-      sessionStorage.setItem("generatedArticle", JSON.stringify({ ...data, inputText }));
+      storeArticle({ ...data, inputText });
       router.push("/preview");
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
